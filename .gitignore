@@ -1,0 +1,36 @@
+# Virtual Environment
+venv/
+.venv/
+ENV/
+env/
+
+# Python caching
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# SQLite database
+backend/*.db
+backend/skincv.db
+
+# User Uploads
+backend/uploads/
+
+# Node/Vite dependencies and builds
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Logs
+logs/
+*.log
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# MediaPipe/Local assets cache if generated
+backend/app/face_placeholder.png
