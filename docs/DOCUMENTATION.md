@@ -218,6 +218,10 @@ Confidence is independently assessed per concern — for example, flash photogra
 
 ### 6.4 Known Limitations (Documented, Not Hidden)
 
+> [!NOTE]
+> **Debugging Case Study: Heuristic Convergence Fix**
+> During initial testing with different photos, skin concern scores for `pigmentation` and `under_eye_contrast` converged to the same values (`100` and `0` respectively) across different people's profiles. This was caused by CLAHE modifying the LAB array in-place, which forced the "raw" baseline check variables to read equalized contrast data (flattening under-eye contrast and inflating pigmentation variance). We resolved this by cloning the pre-processed L* channel (`l_channel_raw = img_lab_raw[:, :, 0].copy()`) before applying CLAHE, restoring dynamic range and scores across all profiles (e.g. pigmentation scores from 54 to 100).
+
 > [!IMPORTANT]
 > SkinCV is a **heuristic-based demo tool**, not a clinical diagnostic device. The following are inherent limitations of classical CV approaches operating on single RGB images.
 

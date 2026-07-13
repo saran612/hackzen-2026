@@ -300,11 +300,12 @@ def analyze_skin_image(image_bytes: bytes):
     # --- 7. Color space conversions ---
     img_lab_raw = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
 
-    # Preserve pre-CLAHE a* channel for acne detection (CLAHE suppresses redness contrast)
+    # Preserve pre-CLAHE a* and L* channels (CLAHE modifies the L* channel in-place)
     a_channel_raw = img_lab_raw[:, :, 1].copy()
+    l_channel_raw = img_lab_raw[:, :, 0].copy()
 
     # Exposure check (before CLAHE)
-    exposure_status = check_exposure(img_lab_raw[:, :, 0], face_mask)
+    exposure_status = check_exposure(l_channel_raw, face_mask)
     if exposure_status != "normal":
         warnings.append(f"Image appears {exposure_status}. Auto-correction applied, but scores may have reduced accuracy.")
 
@@ -324,12 +325,12 @@ def analyze_skin_image(image_bytes: bytes):
     # --- 9. Cheek baseline & lighting uniformity ---
     cheek_masks = [extract_region_mask(img, regions[n]) for n in ["left_cheek", "right_cheek"]]
     combined_cheek_mask = cv2.bitwise_or(cheek_masks[0], cheek_masks[1])
-    cheek_mean_l = cv2.mean(img_lab[:, :, 0], mask=combined_cheek_mask)[0]
+    cheek_mean_l = cv2.mean(l_channel_raw, mask=combined_cheek_mask)[0]
 
     zone_mean_ls = []
     for name, poly in regions.items():
         zmask = extract_region_mask(img, poly)
-        zml = cv2.mean(img_lab[:, :, 0], mask=zmask)[0]
+        zml = cv2.mean(l_channel_raw, mask=zmask)[0]
         zone_mean_ls.append(zml)
 
     lighting_uniformity = check_lighting_uniformity(zone_mean_ls)
@@ -394,7 +395,7 @@ def analyze_skin_image(image_bytes: bytes):
 
         # 2. PIGMENTATION / UNEVEN TONE
         if name in ["forehead", "left_cheek", "right_cheek"]:
-            _, std_l = cv2.meanStdDev(img_lab[:, :, 0], mask=mask)
+            _, std_l = cv2.meanStdDev(l_channel_raw, mask=mask)
             tone_std_devs.append(std_l[0][0])
 
         # 3. WRINKLES / FINE LINES
@@ -421,8 +422,10 @@ def analyze_skin_image(image_bytes: bytes):
     for name in ["left_under_eye", "right_under_eye"]:
         poly = regions[name]
         mask = extract_region_mask(img, poly)
-        mean_l = cv2.mean(img_lab[:, :, 0], mask=mask)[0]
+        mean_l = cv2.mean(l_channel_raw, mask=mask)[0]
         l_under_eye.append(mean_l)
+    avg_eye_l = 0.0
+    diff = 0.0
     if l_under_eye and cheek_mean_l > 0:
         avg_eye_l = sum(l_under_eye) / len(l_under_eye)
         diff = cheek_mean_l - avg_eye_l
@@ -502,6 +505,7 @@ def analyze_skin_image(image_bytes: bytes):
         f"CV Analysis: acne_count={acne_count}, total_skin_px={total_skin_pixels}, "
         f"avg_std_dev={avg_std_dev:.2f}, edge_density={edge_density:.5f}, "
         f"shine_ratio={shine_ratio:.5f}, lap_var={lap_var:.2f}, "
+        f"cheek_mean_l={cheek_mean_l:.2f}, avg_eye_l={avg_eye_l:.2f}, diff_l={diff:.2f}, "
         f"yaw={yaw_deg}, pitch={pitch_deg}, exposure={exposure_status}, "
         f"lighting={lighting_uniformity}, flash={flash_detected}, faces={faces_detected}"
     )

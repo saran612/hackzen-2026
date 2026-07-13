@@ -194,6 +194,13 @@ The robustness of the classical heuristics and input validations is verified by 
 cd backend && ./venv/bin/python test_robustness.py
 ```
 
+### Debugging Case Study: Heuristic Convergence Fix
+During initial multi-profile testing, skin concern scores for `pigmentation` and `under_eye_contrast` converged to the same values (`100` and `0` respectively) across different people's photos.
+
+- **Root Cause**: The application of CLAHE (Contrast Limited Adaptive Histogram Equalization) modified the LAB space array in-place. This in-place mutation meant the "raw" baseline variables were reading CLAHE-equalized data. CLAHE flattened the natural luminance difference between the cheeks and the under-eye area (reducing under-eye contrast to 0) while artificially boosting noise and local contrast (driving the pigmentation score to 100).
+- **Solution**: We implemented `l_channel_raw = img_lab_raw[:, :, 0].copy()` to preserve the true pre-processed luminance channel before CLAHE execution, and updated the under-eye contrast and pigmentation std dev algorithms to use `l_channel_raw`.
+- **Outcome**: The scores distribute realistically; the default face placeholder now correctly yields a pigmentation score of `67`, and different user uploads show varied scores (e.g., pigmentation from `54` to `100` and under-eye contrast from `0` to `50`).
+
 ---
 
 ## Future Scope

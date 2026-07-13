@@ -135,6 +135,7 @@ export default function FaceAnalyzer({
       stopWebcam();
       handleUpload(file);
     }
+    e.target.value = "";
   };
 
   const handleUpload = async (file) => {

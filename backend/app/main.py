@@ -1,6 +1,8 @@
 import os
 import uuid
 import shutil
+import hashlib
+import logging
 from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -11,6 +13,9 @@ from .database import engine, Base, get_db
 from .models import AnalysisHistory
 from .cv_analysis import analyze_skin_image
 from .recommendation import generate_routine
+
+logger = logging.getLogger("uvicorn.error")
+
 
 # Create DB Tables on Startup
 Base.metadata.create_all(bind=engine)
@@ -45,6 +50,11 @@ async def analyze_image(
 
     # Read image bytes
     contents = await file.read()
+    
+    # Debug: log image details
+    img_size = len(contents)
+    img_hash = hashlib.sha256(contents).hexdigest()
+    logger.info(f"API Received Image: filename='{file.filename}' size={img_size} bytes hash={img_hash}")
     
     # Run MediaPipe and Heuristic CV pipeline (now returns 4 values)
     scores, regions, quality, warnings = analyze_skin_image(contents)
