@@ -340,6 +340,7 @@ def analyze_skin_image(image_bytes: bytes):
     raw_scores = {
         "acne": 0, "under_eye_contrast": 0, "pigmentation": 0,
         "oiliness": 0, "dryness": 0, "wrinkles": 0,
+        "redness": 0, "t_zone_oiliness": 0, "cheek_oiliness": 0,
     }
 
     base_confidence = "high"
@@ -351,6 +352,8 @@ def analyze_skin_image(image_bytes: bytes):
     per_score_confidence = {k: base_confidence for k in raw_scores}
     if flash_detected:
         per_score_confidence["oiliness"] = "low"
+        per_score_confidence["t_zone_oiliness"] = "low"
+        per_score_confidence["cheek_oiliness"] = "low"
     if lighting_uniformity == "uneven":
         per_score_confidence["under_eye_contrast"] = "low"
 
@@ -457,6 +460,24 @@ def analyze_skin_image(image_bytes: bytes):
     lap_var = np.var(laplacian)
     dryness_base = min(100, max(0, (lap_var - TUNING_CONFIG["dryness_base_offset"]) * TUNING_CONFIG["dryness_base_multiplier"]))
     raw_scores["dryness"] = int(max(0, dryness_base - (raw_scores["oiliness"] * TUNING_CONFIG["dryness_oiliness_reduction"])))
+
+    # Set T-Zone Oiliness
+    raw_scores["t_zone_oiliness"] = raw_scores["oiliness"]
+
+    # Calculate Cheek Oiliness
+    cheek_masks = [extract_region_mask(img, regions[n]) for n in ["left_cheek", "right_cheek"]]
+    combined_cheek_mask = cv2.bitwise_or(cheek_masks[0], cheek_masks[1])
+    shine_in_cheeks = cv2.bitwise_and(shine_pixels, shine_pixels, mask=combined_cheek_mask)
+    cheeks_area = np.sum(combined_cheek_mask == 255)
+    cheek_shine_ratio = 0
+    if cheeks_area > 0:
+        cheek_shine_ratio = np.sum(shine_in_cheeks > 0) / cheeks_area
+    raw_scores["cheek_oiliness"] = int(min(100, cheek_shine_ratio * TUNING_CONFIG["oiliness_score_multiplier"]))
+
+    # Calculate redness
+    mean_a_cheeks, _ = cv2.meanStdDev(a_channel, mask=combined_cheek_mask)
+    avg_cheek_a = mean_a_cheeks[0][0]
+    raw_scores["redness"] = int(max(0, min(100, (avg_cheek_a - 130) * 6.6)))
 
     # Clamp
     for k in raw_scores:

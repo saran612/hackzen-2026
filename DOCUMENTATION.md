@@ -61,7 +61,53 @@ Rather than using a black-box neural network trained on a narrow demographic, we
 
 ---
 
-## 4. Dataset & Diversity Statement
+## 4. Regimen Recommendation Methodology (Deterministic Decision Table)
+
+To ensure explainability, speed, and safety, SkinCV uses a rule-based, deterministic decision table for its recommendation engine. This approach avoids the unpredictability of generative AI, returning clear, clinical justifications for every choice.
+
+The recommendation engine operates in two sequential layers:
+
+### Layer 1: Skin Type Inference
+A user's skin type is derived from the computed heuristic scores rather than self-reported data:
+- **Combination**: Inferred when the T-zone oiliness is significantly higher than the cheek oiliness ($T_{zone} - Cheeks > 15$) and T-zone oiliness is elevated ($> 40$).
+- **Oily**: Inferred when overall oiliness is high ($> 50$) and dryness is low ($< 40$).
+- **Dry**: Inferred when dryness (texture roughness) is high ($> 50$) and oiliness is low ($< 35$).
+- **Sensitive-leaning**: Inferred when diffuse redness is high ($> 40$) and localized acne breakouts are low-to-moderate ($< 40$).
+- **Normal/Balanced**: Fallback skin type when all metrics are within balanced ranges.
+
+### Layer 2: Decision Table Mapping
+The derived skin type and concern severities are mapped to specific product categories, active ingredients, and formulations:
+
+| Step | Inferred Skin Type | Concern & Severity | Active Ingredients & Title | Product Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **Cleanse** | *Oily* | N/A | Salicylic Acid, Zinc PCA (Purifying Gel) | Clears excess sebum and unclogs pores. |
+| | *Dry* | N/A | Ceramides, Hyaluronic Acid (Hydrating Cream) | Supportive, lipid-replenishing wash. |
+| | *Combination* | N/A | Glycerin, Zinc PCA (Balancing Foaming) | Clears T-zone shine while gentle on cheeks. |
+| | *Sensitive* | N/A | Colloidal Oatmeal, Cica (Ultra-Gentle) | Milky, non-foaming wash to minimize flushing. |
+| | *Normal* | N/A | Glycerin, Allantoin (Gentle pH-Balanced) | Mild, balanced daily cleanser. |
+| **Treat** | Any | **Acne** ($\ge 60$) | Salicylic Acid 2%, Niacinamide 4% (Clinical) | High-strength sebum and spot control. |
+| | Any | **Acne** ($25$-$59$) | Salicylic Acid 2% (Targeted Spot) | Spot treatment to calm localized breakouts. |
+| | Any | **Wrinkles** ($\ge 60$) | Retinol 0.5%, Copper Peptides (Advanced) | Accelerates cell turnover; strict SPF requirement. |
+| | Any | **Wrinkles** ($25$-$59$) | Matrixyl 3000, Hyaluronic Acid (Multi-Peptide) | Promotes skin firmness and elasticity. |
+| | Any | **Pigmentation** ($\ge 60$) | Vitamin C 15%, Niacinamide 5% (Pigment Corrector) | Inhibits melanin transfer and brightens dark patches. |
+| | Any | **Pigmentation** ($25$-$59$) | Vitamin C, Alpha Arbutin (Brightening Serum) | Neutralizes free radicals and fades surface spots. |
+| | Any | **Dark Circles** ($\ge 60$) | Vitamin K, Caffeine, Peptides (Vascular Support) | Formulated to target vascular congestion. |
+| | Any | **Dark Circles** ($25$-$59$) | Caffeine, Hyaluronic Acid (Revitalizing Eye Gel) | De-puffs under-eyes and brightens shadows. |
+| **Hydrate** | *Oily* | N/A | Hyaluronic Acid, Niacinamide (Oil-Free Gel) | Lightweight, non-greasy matte finish. |
+| | *Dry* | N/A | Ceramides AP/EOP/NP, Shea Butter (Rich Cream) | Restores skin lipids and prevents flakiness. |
+| | *Combination* | N/A | Squalane, Hyaluronic Acid (Balancing Gel-Cream) | Balances T-zone shine and cheek dryness. |
+| | *Sensitive* | N/A | Ceramides, Cica, Allantoin (Soothing Lotion) | Fragrance-free calming protection. |
+| | *Normal* | N/A | Ceramides, Squalane (Barrier Support) | Balanced moisturizer for daily hydration. |
+| **Protect** | *Oily/Combo* | N/A | Zinc Oxide, Niacinamide (Matte SPF 50+) | Sebum-absorbing, velvety physical sunscreen. |
+| | *Dry* | N/A | Hyaluronic Acid, Organic Filters (Hydrating SPF 50+) | Dewy-finish daily moisture with high UV filters. |
+| | *Sensitive* | N/A | Zinc Oxide, Titanium Dioxide (Mineral SPF 50+) | Synthetic-dye and fragrance-free mineral filter. |
+| | *Normal* | N/A | Zinc Oxide, Vitamin E (Daily Fluid SPF 50+) | Lightweight protection with zero white cast. |
+
+To prevent overloading the skin barrier, the engine selects **a maximum of 2 active treatments** (prioritized by: Acne > Wrinkles > Pigmentation > Dark Circles). Any lower-priority concerns are deferred, with clear reasoning explained in the API response.
+
+---
+
+## 5. Dataset & Diversity Statement
 
 > [!NOTE]
 > **Dataset Limitation & Heuristic Choice**: Many publicly available facial skin datasets (like ACNE04) contain images primarily from a single geographic demographic. Training a deep learning classifier on such data causes it to generalize poorly across Fitzpatrick skin types.
@@ -70,7 +116,7 @@ Rather than using a black-box neural network trained on a narrow demographic, we
 
 ---
 
-## 5. Verification & Sample Output
+## 6. Verification & Sample Output
 
 During automated test runs with a high-resolution portrait test image, the system returned the following calibrated response:
 
@@ -78,37 +124,51 @@ During automated test runs with a high-resolution portrait test image, the syste
 ```json
 {
   "scores": {
-    "acne": 0,
-    "dark_circles": 0,
-    "pigmentation": 66,
-    "oiliness": 45,
-    "dryness": 0,
-    "wrinkles": 0
+    "acne": { "score": 83, "confidence": "medium" },
+    "under_eye_contrast": { "score": 0, "confidence": "low" },
+    "pigmentation": { "score": 100, "confidence": "medium" },
+    "oiliness": { "score": 100, "confidence": "low" },
+    "dryness": { "score": 28, "confidence": "medium" },
+    "wrinkles": { "score": 0, "confidence": "medium" },
+    "redness": { "score": 29, "confidence": "medium" },
+    "t_zone_oiliness": { "score": 100, "confidence": "low" },
+    "cheek_oiliness": { "score": 40, "confidence": "low" }
   },
   "routine": [
     {
       "step": "Cleanse",
-      "title": "Gentle pH-Balanced Cleanser",
-      "ingredients": ["Glycerin", "Allantoin"],
-      "description": "A mild, everyday cleanser suitable for maintaining balanced, healthy skin."
+      "title": "Balancing Foaming Cleanser",
+      "ingredients": ["Glycerin", "Zinc PCA"],
+      "description": "A gentle foaming cleanser that clears the oily T-zone while remaining mild on cheeks.",
+      "reason": "Formulated for Combination skin: T-zone oiliness (100) is significantly higher than cheeks (40), indicating mixed zones."
+    },
+    {
+      "step": "Treat (Day/Night)",
+      "title": "Clinical Blemish Control Serum",
+      "ingredients": ["Salicylic Acid 2%", "Niacinamide 4%"],
+      "description": "High-strength formula to reduce sebum, clear comedones, and accelerate spot healing.",
+      "reason": "High acne severity score (83) detected."
     },
     {
       "step": "Treat (Morning)",
-      "title": "Brightening Serum",
-      "ingredients": ["Vitamin C (L-Ascorbic Acid)", "Alpha Arbutin"],
-      "description": "Apply a few drops in the morning before moisturizing to even out skin tone and fade hyperpigmentation."
+      "title": "Pigment Corrector Serum",
+      "ingredients": ["Vitamin C (L-Ascorbic) 15%", "Niacinamide 5%"],
+      "description": "High-potency serum that inhibits melanin transfer and brightens dark patches. Follow with SPF.",
+      "reason": "High hyperpigmentation / uneven tone score (100) detected."
     },
     {
       "step": "Hydrate",
-      "title": "Barrier Support Moisturizer",
-      "ingredients": ["Ceramides", "Squalane"],
-      "description": "Apply morning and night to seal in moisture and protect the skin barrier."
+      "title": "Lightweight Balancing Gel-Cream",
+      "ingredients": ["Squalane", "Hyaluronic Acid", "Centella Asiatica"],
+      "description": "A hybrid gel-cream that hydrates drier cheeks while absorbing excess shine in the T-zone.",
+      "reason": "Hydration texture selected for Combination skin."
     },
     {
       "step": "Protect (Morning)",
-      "title": "Broad Spectrum SPF 50+",
-      "ingredients": ["Zinc Oxide", "Chemical or Mineral UV Filters"],
-      "description": "Apply as the final step of the morning routine. Crucial for protecting skin from premature aging, damage, and post-acne dark marks."
+      "title": "Oil-Control Matte Sunscreen SPF 50+",
+      "ingredients": ["Zinc Oxide", "Niacinamide"],
+      "description": "Broad-spectrum physical sunscreen that absorbs excess sebum and leaves a velvety matte feel. Crucial to protect skin and prevent worsening of active concerns.",
+      "reason": "UV protection tailored for Combination skin."
     }
   ]
 }
@@ -116,7 +176,7 @@ During automated test runs with a high-resolution portrait test image, the syste
 
 ---
 
-## 6. Robustness & Known Limitations
+## 7. Robustness & Known Limitations
 
 This section documents what input edge cases are handled, what triggers graceful rejection or a quality warning, and what remains an honest limitation.
 

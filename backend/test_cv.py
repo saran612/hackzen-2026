@@ -10,7 +10,7 @@ def main():
 
     print("Running face mesh and skin concern scoring...")
     try:
-        scores, regions = analyze_skin_image(img_bytes)
+        scores, regions, quality, warnings = analyze_skin_image(img_bytes)
         print("Success! Face landmarks detected and segmented.")
         print("\nSkin Concern Scores:")
         print(json.dumps(scores, indent=2))
@@ -22,7 +22,9 @@ def main():
         print("\nGenerating Routine:")
         routine = generate_routine(scores)
         for i, step in enumerate(routine, 1):
-            print(f"{i}. [{step['step']}] {step['title']}: {step['description']} (Key Ingredients: {', '.join(step['ingredients'])})")
+            print(f"{i}. [{step['step']}] {step['title']}: {step['description']}")
+            print(f"   Ingredients: {', '.join(step['ingredients'])}")
+            print(f"   Reasoning: {step['reason']}")
 
     except Exception as e:
         print(f"Error during CV analysis: {e}")
