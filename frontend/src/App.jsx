@@ -35,6 +35,10 @@ export default function App() {
     setActiveTab("analyzer");
   };
 
+  const handleReset = () => {
+    setAnalysisResult(null);
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500/30">
       {/* Premium Header */}
@@ -81,7 +85,7 @@ export default function App() {
       <main className="max-w-6xl mx-auto px-4 py-10 flex flex-col items-center">
         <div className="text-center max-w-2xl mb-12 flex flex-col items-center">
           <h1 className="text-4xl font-extrabold text-slate-50 tracking-tight sm:text-5xl mb-4">
-            Physiology-First Skin Analysis
+             Physiology-First Skin Analysis
           </h1>
           <p className="text-base text-slate-400 leading-relaxed">
             An open-challenge facial analyzer explicitly designed for gender-neutral routine building, focusing purely on skin tone-inclusive classical CV heuristics.
@@ -89,25 +93,46 @@ export default function App() {
         </div>
 
         {activeTab === "analyzer" ? (
-          <div className="grid lg:grid-cols-12 gap-8 w-full items-start">
-            {/* Left side: scanner */}
-            <div className="lg:col-span-6 flex justify-center">
-              <FaceAnalyzer
-                apiBase={API_BASE}
-                isAnalyzing={isAnalyzing}
-                setIsAnalyzing={setIsAnalyzing}
-                onAnalysisComplete={handleAnalysisComplete}
-              />
-            </div>
+          analysisResult ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full items-start">
+              {/* Left Column: Compact Image Scan + Zone Analysis Report */}
+              <div className="flex flex-col gap-8 w-full">
+                <FaceAnalyzer
+                  apiBase={API_BASE}
+                  isAnalyzing={isAnalyzing}
+                  setIsAnalyzing={setIsAnalyzing}
+                  onAnalysisComplete={handleAnalysisComplete}
+                  compact={true}
+                  onReset={handleReset}
+                  initialImage={analysisResult ? `${API_BASE}${analysisResult.image_url}` : null}
+                  initialRegions={analysisResult ? analysisResult.regions : null}
+                />
+                <ResultsDisplay
+                  scores={analysisResult.scores}
+                  quality={analysisResult.quality}
+                  warnings={analysisResult.warnings}
+                />
+              </div>
 
-            {/* Right side: results & routine */}
-            <div className="lg:col-span-6 flex flex-col gap-8 items-center w-full">
-              {analysisResult ? (
-                <>
-                  <ResultsDisplay scores={analysisResult.scores} quality={analysisResult.quality} warnings={analysisResult.warnings} />
-                  <RoutineDisplay routine={analysisResult.routine} />
-                </>
-              ) : (
+              {/* Right Column: Recommended Routine */}
+              <div className="flex flex-col gap-8 w-full">
+                <RoutineDisplay routine={analysisResult.routine} />
+              </div>
+            </div>
+          ) : (
+            <div className="grid lg:grid-cols-12 gap-8 w-full items-start">
+              {/* Left side: scanner */}
+              <div className="lg:col-span-6 flex justify-center">
+                <FaceAnalyzer
+                  apiBase={API_BASE}
+                  isAnalyzing={isAnalyzing}
+                  setIsAnalyzing={setIsAnalyzing}
+                  onAnalysisComplete={handleAnalysisComplete}
+                />
+              </div>
+
+              {/* Right side: waiting message */}
+              <div className="lg:col-span-6 flex flex-col gap-8 items-center w-full">
                 <div className="flex flex-col items-center justify-center p-12 text-center border border-slate-900 bg-slate-900/20 rounded-2xl aspect-[4/3] w-full max-w-xl">
                   <Heart className="w-12 h-12 text-slate-800 mb-4" />
                   <h3 className="text-base font-semibold text-slate-300 mb-1">Waiting for analysis</h3>
@@ -115,9 +140,9 @@ export default function App() {
                     Once you upload or capture a photo, your zoned skin concern scores and recommended steps will appear here.
                   </p>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
+          )
         ) : (
           /* History View */
           <div className="w-full max-w-3xl flex flex-col gap-6">

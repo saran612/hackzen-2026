@@ -1,7 +1,16 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { Camera, Upload, RefreshCw, AlertCircle, AlertTriangle } from "lucide-react";
 
-export default function FaceAnalyzer({ onAnalysisComplete, isAnalyzing, setIsAnalyzing, apiBase }) {
+export default function FaceAnalyzer({
+  onAnalysisComplete,
+  isAnalyzing,
+  setIsAnalyzing,
+  apiBase,
+  compact = false,
+  onReset,
+  initialImage = null,
+  initialRegions = null
+}) {
   const [selectedImage, setSelectedImage] = useState(null);
   const [useWebcam, setUseWebcam] = useState(false);
   const [isMockCamera, setIsMockCamera] = useState(false);
@@ -9,6 +18,22 @@ export default function FaceAnalyzer({ onAnalysisComplete, isAnalyzing, setIsAna
   const [regions, setRegions] = useState(null);
   const [hoveredRegion, setHoveredRegion] = useState(null);
   const [qualityWarnings, setQualityWarnings] = useState([]);
+
+  useEffect(() => {
+    if (initialImage) {
+      setSelectedImage(initialImage);
+    } else {
+      setSelectedImage(null);
+    }
+  }, [initialImage]);
+
+  useEffect(() => {
+    if (initialRegions) {
+      setRegions(initialRegions);
+    } else {
+      setRegions(null);
+    }
+  }, [initialRegions]);
 
   const videoElRef = useRef(null);
   const canvasRef = useRef(null);
@@ -224,11 +249,15 @@ export default function FaceAnalyzer({ onAnalysisComplete, isAnalyzing, setIsAna
   };
 
   return (
-    <div className="flex flex-col items-center justify-center w-full max-w-xl p-6 bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800">
-      <h2 className="text-xl font-semibold text-slate-100 mb-2">Facial Skin Scan</h2>
-      <p className="text-sm text-slate-400 text-center mb-6">
-        Take a picture or upload a clear, front-facing portrait to analyze skin concerns.
-      </p>
+    <div className={`flex flex-col items-center justify-center w-full bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800 ${compact ? "p-4" : "max-w-xl p-6"}`}>
+      {!compact && (
+        <>
+          <h2 className="text-xl font-semibold text-slate-100 mb-2">Facial Skin Scan</h2>
+          <p className="text-sm text-slate-400 text-center mb-6">
+            Take a picture or upload a clear, front-facing portrait to analyze skin concerns.
+          </p>
+        </>
+      )}
 
       {error && (
         <div className="flex items-center gap-3 w-full p-4 mb-4 bg-red-950/40 border border-red-900/50 rounded-xl text-red-300 text-sm">
@@ -238,7 +267,7 @@ export default function FaceAnalyzer({ onAnalysisComplete, isAnalyzing, setIsAna
       )}
 
       {/* Main View Area */}
-      <div className="relative w-full aspect-square md:w-[480px] md:h-[480px] bg-slate-950 rounded-xl overflow-hidden border border-slate-850 flex items-center justify-center">
+      <div className={`relative bg-slate-950 rounded-xl overflow-hidden border border-slate-850 flex items-center justify-center ${compact ? "w-full max-w-[280px] aspect-square mx-auto" : "w-full aspect-square md:w-[480px] md:h-[480px]"}`}>
         {isAnalyzing && (
           <div className="absolute inset-0 z-20 bg-slate-950/80 flex flex-col items-center justify-center gap-4">
             <RefreshCw className="w-12 h-12 text-emerald-500 animate-spin" />
@@ -281,7 +310,7 @@ export default function FaceAnalyzer({ onAnalysisComplete, isAnalyzing, setIsAna
         ) : selectedImage ? (
           <div className="relative w-full h-full flex items-center justify-center group">
             {/* Quality warnings overlay */}
-            {qualityWarnings.length > 0 && (
+            {qualityWarnings.length > 0 && !compact && (
               <div className="absolute top-2 left-2 right-2 z-20 bg-amber-950/80 backdrop-blur-sm border border-amber-800/50 rounded-lg p-2.5 flex flex-col gap-1">
                 <div className="flex items-center gap-1.5 text-amber-400 text-[10px] font-bold uppercase tracking-wider">
                   <AlertTriangle className="w-3 h-3" />
@@ -350,12 +379,13 @@ export default function FaceAnalyzer({ onAnalysisComplete, isAnalyzing, setIsAna
               setUseWebcam(false);
               stopWebcam();
               setRegions(null);
+              if (onReset) onReset();
             }}
             className="px-4 py-2 border border-slate-700 hover:bg-slate-900 text-slate-300 rounded-lg text-xs font-semibold transition"
           >
             Reset Scanner
           </button>
-          {!useWebcam && (
+          {!useWebcam && !compact && (
             <button
               onClick={startWebcam}
               className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"

@@ -1,6 +1,20 @@
 import React from "react";
 import { Shield, ShieldAlert, ShieldOff, AlertTriangle, Info } from "lucide-react";
 
+function ConcernAlert() {
+  return (
+    <div className="flex gap-3 p-4 bg-amber-950/30 border border-amber-900/40 rounded-xl text-amber-300 text-xs">
+      <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+      <div className="flex flex-col gap-1">
+        <span className="font-semibold text-amber-200">Elevated Severity Detected</span>
+        <p className="leading-relaxed">
+          SkinCV is a cosmetic analysis tool, not a medical diagnosis — if this concern is persistent, painful, or worsening, please consult a dermatologist.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function ResultsDisplay({ scores, quality, warnings }) {
   if (!scores) return null;
 
@@ -77,6 +91,20 @@ export default function ResultsDisplay({ scores, quality, warnings }) {
     wrinkles: "Fine Lines",
   };
 
+  const triggerConsultAlert = Object.entries(scores).some(([key, val]) => {
+    if (!["acne", "under_eye_contrast", "dark_circles", "pigmentation", "wrinkles", "dryness", "oiliness"].includes(key)) return false;
+    const score = typeof val === "object" && val !== null ? val.score : val;
+    const confidence = typeof val === "object" && val !== null ? val.confidence : "high";
+    return score >= 80 && confidence === "high";
+  }) || (
+    Object.entries(scores).filter(([key, val]) => {
+      if (!["acne", "under_eye_contrast", "dark_circles", "pigmentation", "wrinkles", "dryness", "oiliness"].includes(key)) return false;
+      const score = typeof val === "object" && val !== null ? val.score : val;
+      const confidence = typeof val === "object" && val !== null ? val.confidence : "high";
+      return score >= 70 && confidence === "high";
+    }).length >= 2
+  );
+
   return (
     <div className="w-full max-w-xl p-6 bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800 flex flex-col gap-6">
       <div>
@@ -85,6 +113,9 @@ export default function ResultsDisplay({ scores, quality, warnings }) {
           Concern scores graded 0–100 using relative optical heuristics. Each score includes a confidence level based on image quality.
         </p>
       </div>
+
+      {/* Consult Alert Notice */}
+      {triggerConsultAlert && <ConcernAlert />}
 
       {/* Quality warnings banner */}
       {warnings && warnings.length > 0 && (

@@ -49,11 +49,11 @@ export default function RoutineDisplay({ routine }) {
         ))}
       </div>
       
-      {/* Note about gender-neutral and limitations */}
-      <div className="flex items-start gap-3 p-4 bg-slate-950/80 rounded-xl border border-slate-850 text-xs text-slate-400">
-        <Info className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+      {/* Disclaimer */}
+      <div className="flex items-start gap-3 p-4 bg-slate-950/40 rounded-xl border border-slate-900 text-[10px] text-slate-500">
+        <Info className="w-3.5 h-3.5 text-slate-600 flex-shrink-0 mt-0.5" />
         <p className="leading-relaxed">
-          <strong>Gender-Neutral Formulation</strong>: This routine focuses purely on active biochemical ingredients suited to skin physiology. All recommendations are framed neutrally, avoiding gendered marketing copy.
+          <strong>Disclaimer</strong>: SkinCV is a computer vision-based cosmetic analysis tool designed for informational purposes only. It does not provide medical or dermatological diagnoses, treatment, or clinical advice. Recommendations are cosmetic in nature.
         </p>
       </div>
     </div>
