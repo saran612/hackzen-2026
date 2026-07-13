@@ -22,7 +22,7 @@ landmarker = vision.FaceLandmarker.create_from_options(options)
 TUNING_CONFIG = {
     # 1. Acne / Blemishes Heuristics
     "acne_std_multiplier": 1.8,
-    "acne_min_redness_offset": 5.5,
+    "acne_min_redness_offset": 3.5,
     "acne_min_contour_area": 2,
     "acne_max_contour_area": 250,
     "acne_score_multiplier": 6.0,
@@ -413,9 +413,10 @@ def analyze_skin_image(image_bytes: bytes):
 
     # --- 12. Calculate Final Scores (0-100) ---
 
-    # Acne
+    # Acne (Exponential saturation curve for resolution/bounding-box invariance)
     if total_skin_pixels > 0:
-        raw_scores["acne"] = int(min(100, (acne_count / (total_skin_pixels / 100000.0)) * TUNING_CONFIG["acne_score_multiplier"]))
+        density = acne_count / (total_skin_pixels / 100000.0)
+        raw_scores["acne"] = int(100 * (1.0 - np.exp(-0.03 * density)))
 
     # Under-eye contrast
     l_under_eye = []

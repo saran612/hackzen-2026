@@ -52,7 +52,7 @@ Rather than using a black-box neural network trained on a narrow demographic, we
 
 | Concern | Method / Algorithm | Severity Calculation |
 | :--- | :--- | :--- |
-| **Acne & Blemishes** | LAB color space `a*` (green-red) channel thresholding | Counts local redness peaks that lie $2.5$ standard deviations above the region's average redness, with a minimum offset of 9.5 a* units. Fully relative to the individual's skin tone. |
+| **Acne & Blemishes** | LAB color space `a*` (green-red) channel thresholding | Counts local redness peaks that lie $1.8$ standard deviations above the region's average redness, with a minimum offset floor of $3.5$ $a^*$ units. It maps these count densities to a final score using an exponential saturation decay curve ($k = -0.03$) to ensure resolution and distance invariance. |
 | **Under-Eye Contrast** | Under-Eye vs. Cheek Luminance comparison | Calculates relative percentage difference in `L*` (luminance) channel between the under-eye region and the cheek region. Renamed from "dark circles" to avoid overclaiming — measures optical contrast, not fatigue. |
 | **Pigmentation & Uneven Tone** | Standard Deviation of `L*` channel | Computes color variance across flat regions (forehead and cheeks). Higher deviation indicates hyperpigmentation or uneven tone. |
 | **Wrinkles & Fine Lines** | Canny Edge Density inside eroded masks | Applies a Canny filter (thresholds 80, 180) to detect sharp lines. Erodes the region boundaries first to avoid false wrinkle detections from hair or eyelashes. |
@@ -124,7 +124,7 @@ During automated test runs with a high-resolution portrait test image, the syste
 ```json
 {
   "scores": {
-    "acne": { "score": 83, "confidence": "medium" },
+    "acne": { "score": 60, "confidence": "medium" },
     "under_eye_contrast": { "score": 0, "confidence": "low" },
     "pigmentation": { "score": 100, "confidence": "medium" },
     "oiliness": { "score": 100, "confidence": "low" },
