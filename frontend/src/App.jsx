@@ -46,9 +46,6 @@ export default function App() {
             </div>
             <span className="font-bold tracking-tight text-lg text-slate-100 flex items-center gap-1.5">
               SkinCV
-              <span className="text-[10px] uppercase tracking-widest bg-slate-900 border border-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono">
-                v1.0.0
-              </span>
             </span>
           </div>
           <nav className="flex items-center gap-2">
@@ -83,10 +80,6 @@ export default function App() {
       {/* Hero Header */}
       <main className="max-w-6xl mx-auto px-4 py-10 flex flex-col items-center">
         <div className="text-center max-w-2xl mb-12 flex flex-col items-center">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-medium mb-4">
-            <Sparkles className="w-3.5 h-3.5" />
-            HackZen 2026 CV Track Entry
-          </div>
           <h1 className="text-4xl font-extrabold text-slate-50 tracking-tight sm:text-5xl mb-4">
             Physiology-First Skin Analysis
           </h1>
