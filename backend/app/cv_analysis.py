@@ -145,6 +145,15 @@ def check_lighting_uniformity(zone_mean_ls):
     return "good"
 
 
+def detect_facial_hair(img_gray, l_channel_raw, mask, baseline_l):
+    """Detects facial hair (beard/mustache) pixels within a region mask."""
+    smoothed_gray = cv2.bilateralFilter(img_gray, 5, 50, 50)
+    edges = cv2.Canny(smoothed_gray, 30, 100)
+    edge_density = cv2.GaussianBlur(edges.astype(np.float32), (15, 15), 0)
+    hair_mask = (l_channel_raw < (baseline_l - 20)) & (edge_density > 3.0) & (mask == 255)
+    return hair_mask.astype(np.uint8) * 255
+
+
 def detect_flash(img_hsv, face_mask):
     """Detect flash photography via sharp, small, very bright specular clusters."""
     hsv_v = img_hsv[:, :, 2]
@@ -317,6 +326,18 @@ def analyze_skin_image(image_bytes: bytes):
     img_hsv = cv2.cvtColor(img_corrected, cv2.COLOR_BGR2HSV)
     img_gray = cv2.cvtColor(img_corrected, cv2.COLOR_BGR2GRAY)
 
+    # Calculate forehead skin baseline L* for hair detection
+    forehead_poly = regions.get("forehead")
+    if forehead_poly is not None:
+        forehead_mask = extract_region_mask(img, forehead_poly)
+        forehead_pixels = l_channel_raw[forehead_mask == 255]
+        if len(forehead_pixels) > 0:
+            baseline_l = np.percentile(forehead_pixels, 75)
+        else:
+            baseline_l = np.percentile(l_channel_raw[face_mask == 255], 75)
+    else:
+        baseline_l = np.percentile(l_channel_raw[face_mask == 255], 75)
+
     # --- 8. Flash detection ---
     flash_detected = detect_flash(img_hsv, face_mask)
     if flash_detected:
@@ -376,16 +397,41 @@ def analyze_skin_image(image_bytes: bytes):
         area = np.sum(mask == 255)
         if area == 0:
             continue
-        total_skin_pixels += area
+
+        # Detect facial hair in beard-prone zones
+        is_beard_prone = name in ["left_cheek", "right_cheek", "chin"]
+        skin_mask = mask.copy()
+        
+        if is_beard_prone:
+            hair_mask = detect_facial_hair(img_gray, l_channel_raw, mask, baseline_l)
+            hair_pixels_count = np.sum(hair_mask == 255)
+            hair_ratio = hair_pixels_count / area if area > 0 else 0
+            
+            # If coverage is heavy (> 75%), we skip this zone entirely for analysis
+            if hair_ratio > 0.75:
+                warnings.append(f"Facial hair heavily covers your {name.replace('_', ' ')}. Analysis in this zone was skipped.")
+                continue
+            
+            # If coverage is moderate (> 25%), we mask out the hair pixels
+            if hair_ratio > 0.25:
+                skin_mask = cv2.bitwise_and(mask, cv2.bitwise_not(hair_mask))
+                warnings.append(f"Facial hair detected on your {name.replace('_', ' ')}. Analysis adjusted to exclude hair.")
+
+        # Update skin area after masking
+        skin_area = np.sum(skin_mask == 255)
+        if skin_area == 0:
+            continue
+            
+        total_skin_pixels += skin_area
 
         # 1. ACNE / BLEMISHES
-        mean_a, std_a = cv2.meanStdDev(a_channel, mask=mask)
+        mean_a, std_a = cv2.meanStdDev(a_channel, mask=skin_mask)
         mean_a, std_a = mean_a[0][0], std_a[0][0]
         red_threshold = max(
             mean_a + TUNING_CONFIG["acne_std_multiplier"] * std_a,
             mean_a + TUNING_CONFIG["acne_min_redness_offset"]
         )
-        red_spots = cv2.bitwise_and(a_channel, a_channel, mask=mask)
+        red_spots = cv2.bitwise_and(a_channel, a_channel, mask=skin_mask)
         _, spot_mask = cv2.threshold(red_spots, red_threshold, 255, cv2.THRESH_BINARY)
         contours, _ = cv2.findContours(spot_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for c in contours:
@@ -395,13 +441,13 @@ def analyze_skin_image(image_bytes: bytes):
 
         # 2. PIGMENTATION / UNEVEN TONE
         if name in ["forehead", "left_cheek", "right_cheek"]:
-            _, std_l = cv2.meanStdDev(l_channel_raw, mask=mask)
+            _, std_l = cv2.meanStdDev(l_channel_raw, mask=skin_mask)
             tone_std_devs.append(std_l[0][0])
 
         # 3. WRINKLES / FINE LINES
         if wrinkle_assessable:
             kernel = np.ones((5, 5), np.uint8)
-            eroded_mask = cv2.erode(mask, kernel, iterations=3)
+            eroded_mask = cv2.erode(skin_mask, kernel, iterations=3)
             eroded_area = np.sum(eroded_mask == 255)
             if eroded_area > 0:
                 smoothed_gray = cv2.bilateralFilter(img_gray, 5, 50, 50)
@@ -417,6 +463,8 @@ def analyze_skin_image(image_bytes: bytes):
     if total_skin_pixels > 0:
         density = acne_count / (total_skin_pixels / 100000.0)
         raw_scores["acne"] = int(100 * (1.0 - np.exp(-0.03 * density)))
+    else:
+        raw_scores["acne"] = None
 
     # Under-eye contrast
     l_under_eye = []
@@ -437,12 +485,16 @@ def analyze_skin_image(image_bytes: bytes):
     if tone_std_devs:
         avg_std_dev = sum(tone_std_devs) / len(tone_std_devs)
         raw_scores["pigmentation"] = int(min(100, max(0, (avg_std_dev - TUNING_CONFIG["pigmentation_offset"]) * TUNING_CONFIG["pigmentation_multiplier"])))
+    else:
+        raw_scores["pigmentation"] = None
 
     # Wrinkles
     edge_density = 0
     if wrinkle_assessable and wrinkle_analyzed_pixels > 0:
         edge_density = wrinkle_pixel_count / wrinkle_analyzed_pixels
         raw_scores["wrinkles"] = int(min(100, max(0, (edge_density - TUNING_CONFIG["wrinkle_density_offset"]) * TUNING_CONFIG["wrinkle_score_multiplier"])))
+    else:
+        raw_scores["wrinkles"] = None
 
     # Oiliness
     t_zone_masks = [extract_region_mask(img, regions[n]) for n in ["forehead", "nose", "chin"]]
@@ -485,10 +537,16 @@ def analyze_skin_image(image_bytes: bytes):
 
     # Clamp
     for k in raw_scores:
-        raw_scores[k] = max(0, min(100, raw_scores[k]))
+        if raw_scores[k] is not None:
+            raw_scores[k] = max(0, min(100, raw_scores[k]))
 
     # --- 13. Build structured output ---
-    scores = {k: {"score": v, "confidence": per_score_confidence[k]} for k, v in raw_scores.items()}
+    scores = {}
+    for k, v in raw_scores.items():
+        conf = per_score_confidence[k]
+        if v is None:
+            conf = "low"
+        scores[k] = {"score": v, "confidence": conf}
 
     quality = {
         "resolution": [w, h],

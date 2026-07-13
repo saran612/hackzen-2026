@@ -20,8 +20,8 @@ export default function ResultsDisplay({ scores, quality, warnings }) {
 
   // Helper to extract numeric score (handles both structured and flat formats)
   const getScore = (val) => {
-    if (typeof val === "object" && val !== null) return val.score ?? 0;
-    return val ?? 0;
+    if (typeof val === "object" && val !== null) return val.score;
+    return val;
   };
 
   const getConfidence = (val) => {
@@ -31,12 +31,14 @@ export default function ResultsDisplay({ scores, quality, warnings }) {
 
   // Helper to color code concern intensity
   const getScoreColor = (score) => {
+    if (score === null || score === undefined) return "text-slate-400 bg-slate-500/10 border-slate-500/20";
     if (score < 30) return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
     if (score < 60) return "text-amber-400 bg-amber-500/10 border-amber-500/20";
     return "text-rose-400 bg-rose-500/10 border-rose-500/20";
   };
 
   const getBarColor = (score) => {
+    if (score === null || score === undefined) return "bg-slate-700";
     if (score < 30) return "bg-emerald-500";
     if (score < 60) return "bg-amber-500";
     return "bg-rose-500";
@@ -44,6 +46,7 @@ export default function ResultsDisplay({ scores, quality, warnings }) {
 
   // Human-friendly description of severity
   const getSeverityLabel = (score) => {
+    if (score === null || score === undefined) return "Not Assessed";
     if (score < 15) return "Minimal";
     if (score < 30) return "Mild";
     if (score < 60) return "Moderate";
@@ -187,14 +190,16 @@ export default function ResultsDisplay({ scores, quality, warnings }) {
                   <span className={`text-xs px-2.5 py-0.5 rounded-full border font-semibold ${getScoreColor(score)}`}>
                     {getSeverityLabel(score)}
                   </span>
-                  <span className="text-sm font-bold text-slate-100">{score}/100</span>
+                  <span className="text-sm font-bold text-slate-100">
+                    {score === null || score === undefined ? "N/A" : `${score}/100`}
+                  </span>
                 </div>
               </div>
               {/* Progress bar */}
               <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-1000 ${getBarColor(score)}`}
-                  style={{ width: `${Math.max(3, score)}%` }}
+                  style={{ width: `${score === null || score === undefined ? 0 : Math.max(3, score)}%` }}
                 />
               </div>
               {/* Low confidence disclaimer */}

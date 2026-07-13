@@ -222,6 +222,10 @@ Confidence is independently assessed per concern — for example, flash photogra
 > **Debugging Case Study: Heuristic Convergence Fix**
 > During initial testing with different photos, skin concern scores for `pigmentation` and `under_eye_contrast` converged to the same values (`100` and `0` respectively) across different people's profiles. This was caused by CLAHE modifying the LAB array in-place, which forced the "raw" baseline check variables to read equalized contrast data (flattening under-eye contrast and inflating pigmentation variance). We resolved this by cloning the pre-processed L* channel (`l_channel_raw = img_lab_raw[:, :, 0].copy()`) before applying CLAHE, restoring dynamic range and scores across all profiles (e.g. pigmentation scores from 54 to 100).
 
+> [!NOTE]
+> **Inclusive Design Case Study: Facial Hair Exclusion**
+> Under-eye, cheek, and chin zones are prone to facial hair (beards/mustaches), which register as high Canny edge densities and dark L* values, leading to false-positive hyperpigmentation and wrinkle scores. To keep the tool inclusive and gender-neutral, we implemented an edge density ($15\times15$ Gaussian-blurred Canny edges) and luminance comparison ($L^* < \mu_{forehead\_baseline} - 20$) hair-detection pass. In moderate coverage zones ($25\%\text{--}75\%$), hair pixels are masked out and heuristics are computed exclusively on skin pixels. In heavy coverage zones ($>75\%$), analysis is skipped entirely, returning `N/A` (Not Assessed) with a warning notice instead of fabricating a misleading score.
+
 > [!IMPORTANT]
 > SkinCV is a **heuristic-based demo tool**, not a clinical diagnostic device. The following are inherent limitations of classical CV approaches operating on single RGB images.
 

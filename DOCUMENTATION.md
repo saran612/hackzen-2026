@@ -198,6 +198,14 @@ During initial multi-profile testing, skin concern scores for `pigmentation` and
 - **Solution**: We implemented `l_channel_raw = img_lab_raw[:, :, 0].copy()` to preserve the true pre-processed luminance channel before CLAHE execution, and updated the under-eye contrast and pigmentation std dev algorithms to use `l_channel_raw`.
 - **Outcome**: The scores distribute realistically; the default face placeholder now correctly yields a pigmentation score of `67`, and different user uploads show varied scores (e.g., pigmentation from `54` to `100` and under-eye contrast from `0` to `50`).
 
+### Inclusive Engineering: Facial Hair Detection & Exclusion
+To uphold our gender-neutral and inclusive mission, SkinCV contains a dedicated facial hair (beard/mustache) detection and exclusion sub-pipeline.
+- **Problem**: Dark hair fibers and high Canny edge densities in beard/mustache zones skew classical CV heuristics, causing clean skin covered by hair to register false-positive hyperpigmentation and severe fine lines/wrinkles.
+- **Root Cause & Detection**: By computing local Canny edge density (blurred with a $15\times15$ Gaussian kernel) and comparing luminance against the user's forehead skin baseline ($L^* < \mu_{forehead\_baseline} - 20$), we isolate hair pixels from skin pixels.
+- **Exclusion & Fallbacks**:
+  - **Moderate Hair Coverage ($25\%\text{--}75\%$)**: Hair pixels are masked out of the region mask. Pigmentation and wrinkles are calculated exclusively on the remaining visible skin pixels, with an informative warning added to the user's report.
+  - **Heavy Hair Coverage ($>75\%$)**: Analysis in that zone is skipped. If all candidate zones for a concern are skipped, the final score returns `N/A` (Not Assessed) with a warning, rather than fabricating a misleading score.
+
 ---
 
 ## Future Scope

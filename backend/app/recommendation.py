@@ -9,8 +9,12 @@ def generate_routine(scores: dict) -> list:
     def get_score(key):
         val = scores.get(key, 0)
         if isinstance(val, dict):
-            return val.get("score", 0)
-        return val
+            s = val.get("score", 0)
+        else:
+            s = val
+        if s is None or isinstance(s, str):
+            return 0
+        return s
 
     # Extract all necessary scores
     acne_score = get_score("acne")
