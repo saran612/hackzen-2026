@@ -1,9 +1,12 @@
 # SkinCV
 
-SkinCV is a physiology-first facial skin concern analysis and personalized skincare routine recommendation system. It was built for the **HackZen 2026 Open Challenge** (Computer Vision track) to showcase an inclusive, gender-neutral approach to skincare analytics.
+SkinCV is a physiology-first facial skin concern analysis and personalized skincare routine recommendation system. It was built for the **HackZen 2026 Open Challenge** (Computer Vision track).
 
 ## Team Details
-- **Developer / Team**: saran karthick
+- **Team Zenin**: 
+   - premnath V R
+   - saran karthick A
+   - Aathirai Yaazhini Thiru
 
 ## Tech Stack
 - **Backend**: FastAPI + SQLAlchemy + SQLite
